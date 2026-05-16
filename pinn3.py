@@ -8,16 +8,16 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print(f"Using device: {device}")
 
 g = 9.81
-v0 = 626.0
+v0 = 886.0
 
 class PINN(nn.Module):
     def __init__(self):
         super(PINN, self).__init__()
-        self.layer_in = nn.Linear(1, 64)
-        self.hidden1 = nn.Linear(64, 64)
-        self.hidden2 = nn.Linear(64, 64)
-        self.hidden3 = nn.Linear(64, 64)
-        self.layer_out = nn.Linear(64, 2)
+        self.layer_in = nn.Linear(1, 128)
+        self.hidden1 = nn.Linear(128, 128)
+        self.hidden2 = nn.Linear(128, 128)
+        self.hidden3 = nn.Linear(128, 128)
+        self.layer_out = nn.Linear(128, 2)
         self.activation = nn.Tanh()
         self.init_weights()
 
@@ -33,8 +33,8 @@ class PINN(nn.Module):
         x = self.activation(self.hidden2(x))
         x = self.activation(self.hidden3(x))
         out = self.layer_out(x)
-        h = out[:, 0:1] * 20000.0
-        v = out[:, 1:2] * 626.0
+        h = out[:, 0:1] * 40000.0
+        v = out[:, 1:2] * 886.0
         return h, v
 
 def compute_loss(model, t_physics, t_initial):
@@ -73,14 +73,14 @@ def main():
     optimizer = torch.optim.Adam(model.parameters(), lr=0.0005)
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=1000, gamma=0.8)
 
-    n_epochs = 50000
+    n_epochs = 48000
     start_epoch = 1
 
-    if os.path.exists('checkpoint5.pth'):
-        checkpoint5 = torch.load('checkpoint5.pth')
-        model.load_state_dict(checkpoint5['model_state_dict'])
-        optimizer.load_state_dict(checkpoint5['optimizer_state_dict'])
-        start_epoch = checkpoint5['epoch'] + 1
+    if os.path.exists('checkpoint6.pth'):
+        checkpoint6 = torch.load('checkpoint6.pth')
+        model.load_state_dict(checkpoint6['model_state_dict'])
+        optimizer.load_state_dict(checkpoint6['optimizer_state_dict'])
+        start_epoch = checkpoint6['epoch'] + 1
 
         print(f"Resuming from epoch {start_epoch}")
 
@@ -107,7 +107,7 @@ def main():
                 'epoch': epoch,
                 'model_state_dict': model.state_dict(),
                 'optimizer_state_dict': optimizer.state_dict(),
-            }, 'checkpoint5.pth')
+            }, 'checkpoint6.pth')
 
         if epoch % 500 == 0:        
             print(f"Epoch {epoch:5d}/{n_epochs} | Loss: {total_loss.item():.2e}")
@@ -167,6 +167,7 @@ def main():
     mae = np.mean(error)
     max_h_pinn = np.max(h_pred)
     max_h_exact = np.max(h_exact)
+    error_percent = (mae / max_h_exact) * 100
 
     results_text = (
         f"RESULTS SUMMARY\n"
@@ -174,6 +175,7 @@ def main():
         f"PINN Apogee: {max_h_pinn:.2f} m\n"
         f"Exact Apogee: {max_h_exact:.2f} m\n"
         f"Mean Absolute Error: {mae:.4f} m\n"
+        f"Error Percentag: {error_percent:.2f}%\n"
         f"Final Physics Loss:  {history_physics[-1]:.2e}\n"
         f"Status: TRAINING SUCCESSFUL"
     )
